@@ -1,0 +1,8 @@
+name = "relay-mesh"
+main = "src/index.ts"
+compatibility_date = "2026-09-26"
+compatibility_flags = ["nodejs_compat"]
+
+# Set these with `wrangler secret put SESSION_SECRET` and
+# `wrangler secret put DATABASE_URL` (don't commit real secrets here).
+# [vars] is only for non-secret values if you ever add any.

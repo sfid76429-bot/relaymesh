@@ -1,0 +1,275 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: relay
+    description: Shared AI relay operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /relay/stats:
+    get:
+      operationId: getRelayStats
+      tags: [relay]
+      summary: Get relay overview statistics
+      responses:
+        "200":
+          description: Relay statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelayStats"
+  /relay/providers:
+    get:
+      operationId: listRelayProviders
+      tags: [relay]
+      summary: List supported AI providers and their pool health
+      responses:
+        "200":
+          description: Provider pool
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RelayProvider"
+  /relay/keys:
+    post:
+      operationId: addRelayKey
+      tags: [relay]
+      summary: Add a provider key to the shared relay pool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelayKeyInput"
+      responses:
+        "201":
+          description: Key accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelayKey"
+        "400":
+          description: Invalid key submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /relay/chat:
+    post:
+      operationId: relayChatCompletion
+      tags: [relay]
+      summary: Route a chat completion through the healthiest available provider
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelayChatInput"
+      responses:
+        "200":
+          description: Chat completion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelayChatResponse"
+        "503":
+          description: No provider key is currently available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /v1/chat/completions:
+    post:
+      operationId: relayOpenAiChatCompletion
+      tags: [relay]
+      summary: OpenAI-compatible chat completion relay endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelayChatInput"
+      responses:
+        "200":
+          description: OpenAI-compatible chat completion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelayChatResponse"
+        "429":
+          description: Client rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: No provider key is currently available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    RelayStats:
+      type: object
+      properties:
+        providers:
+          type: integer
+        activeKeys:
+          type: integer
+        requestsRouted:
+          type: integer
+        uptimePercent:
+          type: number
+        endpoint:
+          type: string
+      required: [providers, activeKeys, requestsRouted, uptimePercent, endpoint]
+    RelayProvider:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        kind:
+          type: string
+        model:
+          type: string
+        endpoint:
+          type: string
+        keyCount:
+          type: integer
+        status:
+          type: string
+        accent:
+          type: string
+      required: [id, name, shortName, kind, model, endpoint, keyCount, status, accent]
+    RelayKeyInput:
+      type: object
+      properties:
+        providerId:
+          type: string
+        apiKey:
+          type: string
+          minLength: 8
+        label:
+          type: string
+          maxLength: 48
+        consent:
+          type: boolean
+      required: [providerId, apiKey, consent]
+    RelayKey:
+      type: object
+      properties:
+        id:
+          type: string
+        providerId:
+          type: string
+        label:
+          type: string
+        maskedKey:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+      required: [id, providerId, label, maskedKey, status, createdAt]
+    RelayMessage:
+      type: object
+      properties:
+        role:
+          type: string
+        content:
+          type: string
+      required: [role, content]
+    RelayChatInput:
+      type: object
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/RelayMessage"
+        model:
+          type: string
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+      required: [messages]
+    RelayChatResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        object:
+          type: string
+        created:
+          type: integer
+        model:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                type: object
+                properties:
+                  role:
+                    type: string
+                  content:
+                    type: string
+                required: [role, content]
+              finish_reason:
+                type: string
+            required: [index, message, finish_reason]
+        provider:
+          type: string
+        content:
+          type: string
+        routedAt:
+          type: string
+        fallbackCount:
+          type: integer
+      required: [id, object, created, model, choices, provider, content, routedAt, fallbackCount]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+

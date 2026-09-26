@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "RelayMesh"
+description = "RelayMesh is a calm, transparent community AI gateway that routes shared provider capacity through one OpenAI-compatible endpoint."
+version = "1.0.0"
+id = "artifacts/open-ai-relay"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22173
+
+[services.development]
+run = "pnpm --filter @workspace/open-ai-relay run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/open-ai-relay", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/open-ai-relay/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22173"
+BASE_PATH = "/"
